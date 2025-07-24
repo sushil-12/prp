@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
 
-import { Badge, Button, Card } from '@/components/ui';
+import { Badge, Button, Card, Input } from '@/components/ui';
 import { theme } from '@/constants/theme';
 
 const Container = styled(SafeAreaView)`
@@ -23,12 +23,11 @@ const HeaderTitle = styled(Text)`
   font-size: ${theme.typography['2xl']}px;
   font-weight: ${theme.typography.fontWeights.bold};
   color: ${theme.colors.text.primary};
-  margin-bottom: ${theme.spacing[1]}px;
+  margin-bottom: ${theme.spacing[3]}px;
 `;
 
-const HeaderSubtitle = styled(Text)`
-  font-size: ${theme.typography.base}px;
-  color: ${theme.colors.text.secondary};
+const SearchContainer = styled(View)`
+  margin-bottom: ${theme.spacing[4]}px;
 `;
 
 const Content = styled(ScrollView)`
@@ -45,6 +44,26 @@ const SectionTitle = styled(Text)`
   font-weight: ${theme.typography.fontWeights.semibold};
   color: ${theme.colors.text.primary};
   margin-bottom: ${theme.spacing[3]}px;
+`;
+
+const FilterChips = styled(ScrollView)`
+  margin-bottom: ${theme.spacing[4]}px;
+`;
+
+const FilterChip = styled(TouchableOpacity)<{ active: boolean }>`
+  padding-horizontal: ${theme.spacing[3]}px;
+  padding-vertical: ${theme.spacing[2]}px;
+  border-radius: ${theme.borderRadius.full}px;
+  margin-right: ${theme.spacing[2]}px;
+  border-width: 1px;
+  background-color: ${(props: { active: boolean }) => props.active ? theme.colors.primary[500] : theme.colors.background.primary};
+  border-color: ${(props: { active: boolean }) => props.active ? theme.colors.primary[500] : theme.colors.border.medium};
+`;
+
+const FilterChipText = styled(Text)<{ active: boolean }>`
+  font-size: ${theme.typography.sm}px;
+  font-weight: ${theme.typography.fontWeights.medium};
+  color: ${(props: { active: boolean }) => props.active ? theme.colors.text.inverse : theme.colors.text.primary};
 `;
 
 const JobCard = styled(Card)`
@@ -103,28 +122,10 @@ const JobSalary = styled(Text)`
   color: ${theme.colors.primary[600]};
 `;
 
-const QuickActions = styled(View)`
-  flex-direction: row;
-  gap: ${theme.spacing[3]}px;
-  margin-bottom: ${theme.spacing[4]}px;
-`;
-
-const StatsCard = styled(Card)`
-  flex: 1;
-  align-items: center;
-`;
-
-const StatsNumber = styled(Text)`
-  font-size: ${theme.typography['3xl']}px;
-  font-weight: ${theme.typography.fontWeights.bold};
-  color: ${theme.colors.primary[600]};
-  margin-bottom: ${theme.spacing[1]}px;
-`;
-
-const StatsLabel = styled(Text)`
+const ResultsCount = styled(Text)`
   font-size: ${theme.typography.sm}px;
   color: ${theme.colors.text.secondary};
-  text-align: center;
+  margin-bottom: ${theme.spacing[3]}px;
 `;
 
 // Mock data
@@ -138,6 +139,7 @@ const mockJobs = [
     type: 'Full-time',
     tags: ['React Native', 'TypeScript', 'Mobile'],
     posted: '2 days ago',
+    match: 95,
   },
   {
     id: '2',
@@ -148,59 +150,128 @@ const mockJobs = [
     type: 'Full-time',
     tags: ['React', 'JavaScript', 'CSS'],
     posted: '1 week ago',
+    match: 87,
   },
   {
     id: '3',
-    title: 'UI/UX Designer',
-    company: 'Design Studio',
-    location: 'New York, NY',
-    salary: '$80k - $110k',
+    title: 'Mobile App Developer',
+    company: 'MobileFirst',
+    location: 'Austin, TX',
+    salary: '$100k - $130k',
     type: 'Full-time',
-    tags: ['Figma', 'Sketch', 'Prototyping'],
+    tags: ['React Native', 'iOS', 'Android'],
     posted: '3 days ago',
+    match: 92,
+  },
+  {
+    id: '4',
+    title: 'Full Stack Developer',
+    company: 'WebSolutions',
+    location: 'Denver, CO',
+    salary: '$85k - $115k',
+    type: 'Full-time',
+    tags: ['React', 'Node.js', 'MongoDB'],
+    posted: '5 days ago',
+    match: 78,
   },
 ];
 
-export default function JobsScreen() {
-  const [applicationsCount, setApplicationsCount] = useState(12);
-  const [interviewsCount, setInterviewsCount] = useState(3);
-  const [offersCount, setOffersCount] = useState(1);
+const filterOptions = [
+  'All Jobs',
+  'Remote',
+  'Full-time',
+  'Part-time',
+  'Contract',
+  'React Native',
+  'TypeScript',
+  'Mobile',
+];
+
+export default function SearchScreen() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilters, setActiveFilters] = useState(['All Jobs']);
+  const [jobs] = useState(mockJobs);
+
+  const toggleFilter = (filter: string) => {
+    if (filter === 'All Jobs') {
+      setActiveFilters(['All Jobs']);
+    } else {
+      setActiveFilters(prev => {
+        const newFilters = prev.filter(f => f !== 'All Jobs');
+        if (newFilters.includes(filter)) {
+          return newFilters.filter(f => f !== filter);
+        } else {
+          return [...newFilters, filter];
+        }
+      });
+    }
+  };
+
+  const filteredJobs = jobs.filter(job => {
+    if (activeFilters.includes('All Jobs') || activeFilters.length === 0) {
+      return true;
+    }
+    
+    return activeFilters.some(filter => 
+      job.tags.includes(filter) || 
+      job.type === filter ||
+      (filter === 'Remote' && job.location.toLowerCase().includes('remote'))
+    );
+  });
 
   return (
     <Container>
       <Header>
-        <HeaderTitle>Jobs</HeaderTitle>
-        <HeaderSubtitle>Find your next opportunity</HeaderSubtitle>
+        <HeaderTitle>Search Jobs</HeaderTitle>
+        <SearchContainer>
+          <Input
+            placeholder="Search jobs, companies, or keywords..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </SearchContainer>
       </Header>
 
       <Content>
-        {/* Quick Stats */}
+        {/* Filters */}
         <Section>
-          <SectionTitle>Your Progress</SectionTitle>
-          <QuickActions>
-            <StatsCard>
-              <StatsNumber>{applicationsCount}</StatsNumber>
-              <StatsLabel>Applications</StatsLabel>
-            </StatsCard>
-            <StatsCard>
-              <StatsNumber>{interviewsCount}</StatsNumber>
-              <StatsLabel>Interviews</StatsLabel>
-            </StatsCard>
-            <StatsCard>
-              <StatsNumber>{offersCount}</StatsNumber>
-              <StatsLabel>Offers</StatsLabel>
-            </StatsCard>
-          </QuickActions>
+          <SectionTitle>Filters</SectionTitle>
+          <FilterChips horizontal showsHorizontalScrollIndicator={false}>
+            {filterOptions.map((filter) => (
+              <FilterChip
+                key={filter}
+                active={activeFilters.includes(filter)}
+                onPress={() => toggleFilter(filter)}
+              >
+                <FilterChipText active={activeFilters.includes(filter)}>
+                  {filter}
+                </FilterChipText>
+              </FilterChip>
+            ))}
+          </FilterChips>
         </Section>
 
-        {/* Recommended Jobs */}
+        {/* Search Results */}
         <Section>
-          <SectionTitle>Recommended for You</SectionTitle>
-          {mockJobs.map((job) => (
+          <SectionTitle>Search Results</SectionTitle>
+          <ResultsCount>
+            {filteredJobs.length} jobs found
+          </ResultsCount>
+          
+          {filteredJobs.map((job) => (
             <JobCard key={job.id} variant="elevated" onPress={() => {}}>
               <JobHeader>
                 <JobTitle>{job.title}</JobTitle>
-                <Badge label={job.type} variant="outline" size="sm" />
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Badge label={job.type} variant="outline" size="sm" />
+                  <Text style={{ 
+                    fontSize: theme.typography.xs, 
+                    color: theme.colors.success[600],
+                    marginTop: theme.spacing[1]
+                  }}>
+                    {job.match}% match
+                  </Text>
+                </View>
               </JobHeader>
               
               <JobCompany>{job.company}</JobCompany>
@@ -226,25 +297,18 @@ export default function JobsScreen() {
           ))}
         </Section>
 
-        {/* Quick Actions */}
-        <Section>
-          <SectionTitle>Quick Actions</SectionTitle>
-          <View style={{ gap: theme.spacing[3] }}>
+        {/* Load More */}
+        {filteredJobs.length > 0 && (
+          <Section>
             <Button
-              title="Upload Resume"
-              onPress={() => {}}
-              variant="primary"
-              fullWidth
-            />
-            <Button
-              title="Set Job Preferences"
+              title="Load More Jobs"
               onPress={() => {}}
               variant="outline"
               fullWidth
             />
-          </View>
-        </Section>
+          </Section>
+        )}
       </Content>
     </Container>
   );
-}
+} 
