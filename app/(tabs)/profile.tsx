@@ -1,13 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Image, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
 
+import { ToastDemo } from '@/components/ToastDemo';
 import { Button, Card } from '@/components/ui';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 
 const Container = styled(SafeAreaView)`
   flex: 1;
@@ -237,6 +239,7 @@ const mockMenuItems = [
 
 export default function ProfileScreen() {
   const { user, signOut, loading } = useAuth();
+  const { showToast } = useToast();
   const [menuItems, setMenuItems] = useState(mockMenuItems);
   const [achievements] = useState(mockAchievements);
 
@@ -251,38 +254,21 @@ export default function ProfileScreen() {
   };
 
   const handleSignOut = async () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut();
-              router.replace('/');
-            } catch (error: any) {
-              Alert.alert('Error', 'Failed to sign out. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+    try {
+      await signOut();
+      router.replace('/');
+    } catch (error: any) {
+      // Error is already handled by AuthContext with toast
+    }
   };
 
   const handleExportData = () => {
-    Alert.alert(
-      'Export Data',
-      'This feature will export your profile data, job applications, and preferences.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Export', onPress: () => {
-          Alert.alert('Success', 'Your data export has been initiated. You will receive an email when it\'s ready.');
-        }},
-      ]
-    );
+    showToast('info', 'Export Data', 'This feature will export your profile data, job applications, and preferences.');
+    
+    // Simulate data export
+    setTimeout(() => {
+      showToast('success', 'Export Initiated', 'Your data export has been initiated. You will receive an email when it\'s ready.');
+    }, 2000);
   };
 
   return (
@@ -383,6 +369,12 @@ export default function ProfileScreen() {
               loading={loading}
             />
           </View>
+        </Section>
+
+        {/* Toast Demo - Remove this section after testing */}
+        <Section>
+          <SectionTitle>Toast Demo</SectionTitle>
+          <ToastDemo />
         </Section>
       </Content>
     </Container>

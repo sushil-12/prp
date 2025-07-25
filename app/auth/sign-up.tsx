@@ -3,15 +3,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, router } from 'expo-router';
 import React, { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
 
 import { Button, Input } from '@/components/ui';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { SignUpFormData, signUpSchema } from '@/lib/validation/auth';
-import Animated, { useSharedValue, withTiming } from 'react-native-reanimated';
 
 const Container = styled(SafeAreaView)`
   flex: 1;
@@ -29,8 +30,7 @@ const ScrollContent = styled(ScrollView)`
 
 const Header = styled(View)`
   align-items: center;
-  margin-bottom: ${theme.spacing[6]}px;
-  margin-top: ${theme.spacing[4]}px;
+  margin-bottom: ${theme.spacing[8]}px;
 `;
 
 const Title = styled(Text)`
@@ -41,9 +41,10 @@ const Title = styled(Text)`
 `;
 
 const Subtitle = styled(Text)`
-  font-size: ${theme.typography.base}px;
+  font-size: ${theme.typography['2xl']}px;
   color: ${theme.colors.text.secondary};
-  text-align: center;
+  text-align: left;
+  font-weight: ${theme.typography.fontWeights.medium};
 `;
 
 const FormSection = styled(View)`
@@ -125,12 +126,11 @@ const SignInLink = styled(Link)`
 `;
 
 const HeroImage = styled(Image)`
-  width: 30%;
-  height: 100px;
+  width: 50%;
+  height: 80px;
   align-self: center;
-  border-radius: ${theme.borderRadius.base}px;
   margin-top: ${theme.spacing[4]}px;
-  margin-bottom: ${theme.spacing[4]}px;
+  border-radius: ${theme.borderRadius.base}px;
 `;
 
 const SignInText = styled(Text)`
@@ -141,13 +141,6 @@ const SignInText = styled(Text)`
 const SignInLinkText = styled(Text)`
   color: ${theme.colors.primary[600]};
   font-weight: ${theme.typography.fontWeights.medium};
-`;
-
-const ErrorText = styled(Text)`
-  font-size: ${theme.typography.sm}px;
-  color: ${theme.colors.error[500]};
-  text-align: center;
-  margin-bottom: ${theme.spacing[3]}px;
 `;
 
 const PrepText = styled(Text)`
@@ -164,6 +157,7 @@ const LaunchText = styled(Text)`
 
 export default function SignUpScreen() {
   const { signUp, signInWithGoogle, loading, error, clearError } = useAuth();
+  const { showToast } = useToast();
 
   const {
     control,
@@ -171,7 +165,7 @@ export default function SignUpScreen() {
     watch,
     setValue,
     formState: { errors },
-    setError,
+    setError: setFormError,
   } = useForm<SignUpFormData>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
@@ -189,15 +183,21 @@ export default function SignUpScreen() {
     try {
       clearError();
       await signUp(data.name, data.email, data.password);
+      // Only navigate on successful sign-up (no error thrown)
       router.replace('/onboarding/1');
     } catch (err: any) {
+      // Handle specific form field errors
       if (err.code === 'auth/email-already-in-use') {
-        setError('email', { message: 'An account with this email already exists' });
+        setFormError('email', { message: 'An account with this email already exists' });
       } else if (err.code === 'auth/weak-password') {
-        setError('password', { message: 'Password is too weak. Please choose a stronger password' });
-      } else {
-        Alert.alert('Sign Up Error', err.message);
+        setFormError('password', { message: 'Password is too weak. Please choose a stronger password' });
+      } else if (err.code === 'auth/invalid-email') {
+        setFormError('email', { message: 'Please enter a valid email address' });
+      } else if (err.code === 'auth/too-many-requests') {
+        showToast('warning', 'Too Many Attempts', 'Please wait a few minutes before trying again.');
       }
+      // Other errors are already handled by the toast system in AuthContext
+      // Don't navigate on error - stay on the sign-up screen
     }
   };
 
@@ -205,27 +205,21 @@ export default function SignUpScreen() {
     try {
       clearError();
       // In a real app, you would integrate with Google Sign-In SDK
-      Alert.alert(
-        'Google Sign-Up',
-        'Google Sign-Up would be implemented with the Google Sign-In SDK. For demo purposes, this shows the integration point.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Simulate',
-            onPress: async () => {
-              try {
-                // Simulate Google sign-up
-                await signInWithGoogle('mock-google-token');
-                router.replace('/onboarding/1');
-              } catch (err: any) {
-                Alert.alert('Google Sign-Up Error', err.message);
-              }
-            },
-          },
-        ]
-      );
+      showToast('info', 'Google Sign-Up', 'Google Sign-Up integration would be implemented with the Google Sign-In SDK. For demo purposes, you can simulate the sign-up.');
+      
+      // Simulate Google sign-up after a short delay
+      setTimeout(async () => {
+        try {
+          await signInWithGoogle('mock-google-token');
+          // Only navigate on successful sign-up (no error thrown)
+          router.replace('/onboarding/1');
+        } catch (err: any) {
+          // Error is already handled by AuthContext
+          // Don't navigate on error - stay on the sign-up screen
+        }
+      }, 2000);
     } catch (err: any) {
-      Alert.alert('Google Sign-Up Error', err.message);
+      // Error is already handled by AuthContext
     }
   };
 
@@ -248,19 +242,13 @@ export default function SignUpScreen() {
   return (
     <Container>
       <Content behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <Animated.View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: theme.spacing[8] }}>
-          <PrepText>prep</PrepText>
-          <LaunchText>launch</LaunchText>
-        </Animated.View>
+        <HeroImage source={require('@/assets/images/green-app-icon.png')} resizeMode="contain" />
         <ScrollContent showsVerticalScrollIndicator={false}>
           <Header>
-            <Title>Create Your Account</Title>
-            <Subtitle>Join thousands of professionals finding their dream jobs</Subtitle>
+            <Subtitle>Join the millions of professionals finding their dream jobs</Subtitle>
           </Header>
 
           <FormSection>
-            {error && <ErrorText>{error.message}</ErrorText>}
-
             <Controller
               control={control}
               name="name"

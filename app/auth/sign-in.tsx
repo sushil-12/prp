@@ -3,13 +3,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, router } from 'expo-router';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, Image, KeyboardAvoidingView, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
 
 import { Button, Input } from '@/components/ui';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { SignInFormData, signInSchema } from '@/lib/validation/auth';
 
 const Container = styled(SafeAreaView)`
@@ -36,9 +37,10 @@ const Title = styled(Text)`
 `;
 
 const Subtitle = styled(Text)`
-  font-size: ${theme.typography.base}px;
+  font-size: ${theme.typography['2xl']}px;
   color: ${theme.colors.text.secondary};
-  text-align: center;
+  font-weight: ${theme.typography.fontWeights.medium};
+  text-align: left;
 `;
 
 const FormSection = styled(View)`
@@ -119,42 +121,56 @@ const HeroImage = styled(Image)`
   margin-bottom: ${theme.spacing[4]}px;
 `;
 
-const ErrorText = styled(Text)`
-  font-size: ${theme.typography.sm}px;
-  color: ${theme.colors.error[500]};
-  text-align: center;
-  margin-bottom: ${theme.spacing[3]}px;
-`;
-
 export default function SignInScreen() {
   const { signIn, signInWithGoogle, loading, error, clearError } = useAuth();
+  const { showToast } = useToast();
 
   const {
     control,
     handleSubmit,
     formState: { errors },
-    setError,
+    setError: setFormError,
+    getValues,
+    trigger,
   } = useForm<SignInFormData>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
-      email: '',
-      password: '',
+      email: 'sushil.kumar@gmail.com',
+      password: '123456',
     },
   });
 
-  const onSubmit = async (data: SignInFormData) => {
+  const handleSignIn = async () => {
+    console.log('🔍 SIGN-IN: Button pressed');
+    const data = getValues();
+    const isValid = await trigger();
+    
+    if (!isValid) {
+      console.log('🔍 SIGN-IN: Form validation failed');
+      return;
+    }
+
+    console.log('🔍 SIGN-IN: Starting authentication with:', data.email);
     try {
       clearError();
       await signIn(data.email, data.password);
+      console.log('🔍 SIGN-IN: Authentication successful, navigating to tabs');
+      // Only navigate on successful sign-in (no error thrown)
       router.replace('/(tabs)');
     } catch (err: any) {
+      console.log('🔍 SIGN-IN: Authentication failed:', err.code);
+      // Handle specific form field errors
       if (err.code === 'auth/user-not-found') {
-        setError('email', { message: 'No account found with this email address' });
+        setFormError('email', { message: 'No account found with this email address' });
       } else if (err.code === 'auth/wrong-password') {
-        setError('password', { message: 'Incorrect password' });
-      } else {
-        Alert.alert('Sign In Error', err.message);
+        setFormError('password', { message: 'Incorrect password' });
+      } else if (err.code === 'auth/invalid-email') {
+        setFormError('email', { message: 'Please enter a valid email address' });
+      } else if (err.code === 'auth/too-many-requests') {
+        showToast('warning', 'Too Many Attempts', 'Please wait a few minutes before trying again.');
       }
+      // Other errors are already handled by the toast system in AuthContext
+      // Don't navigate on error - stay on the sign-in screen
     }
   };
 
@@ -162,28 +178,22 @@ export default function SignInScreen() {
     try {
       clearError();
       // In a real app, you would integrate with Google Sign-In SDK
-      // For now, we'll show an alert
-      Alert.alert(
-        'Google Sign-In',
-        'Google Sign-In would be implemented with the Google Sign-In SDK. For demo purposes, this shows the integration point.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Simulate',
-            onPress: async () => {
-              try {
-                // Simulate Google sign-in
-                await signInWithGoogle('mock-google-token');
-                router.replace('/(tabs)');
-              } catch (err: any) {
-                Alert.alert('Google Sign-In Error', err.message);
-              }
-            },
-          },
-        ]
-      );
+      // For now, we'll show an info toast
+      showToast('info', 'Google Sign-In', 'Google Sign-In integration would be implemented with the Google Sign-In SDK. For demo purposes, you can simulate the sign-in.');
+      
+      // Simulate Google sign-in after a short delay
+      setTimeout(async () => {
+        try {
+          await signInWithGoogle('mock-google-token');
+          // Only navigate on successful sign-in (no error thrown)
+          router.replace('/(tabs)');
+        } catch (err: any) {
+          // Error is already handled by AuthContext
+          // Don't navigate on error - stay on the sign-in screen
+        }
+      }, 2000);
     } catch (err: any) {
-      Alert.alert('Google Sign-In Error', err.message);
+      // Error is already handled by AuthContext
     }
   };
 
@@ -193,18 +203,13 @@ export default function SignInScreen() {
 
   return (
     <Container>
-      
       <Content behavior={Platform.OS === 'ios' ? 'padding' : 'height'} >
-      <HeroImage source={require('@/assets/images/hero.png')} resizeMode="cover" />
-        {/* <Logo /> */}
+        <HeroImage source={require('@/assets/images/green-app-icon.png')} resizeMode="contain" />
         <Header>
-          <Title>Welcome Back</Title>
           <Subtitle>Sign in to continue your job search journey</Subtitle>
         </Header>
 
         <FormSection>
-          {error && <ErrorText>{error.message}</ErrorText>}
-
           <Controller
             control={control}
             name="email"
@@ -246,7 +251,7 @@ export default function SignInScreen() {
 
           <Button
             title="Sign In"
-            onPress={handleSubmit(onSubmit)}
+            onPress={handleSignIn}
             variant="primary"
             size="lg"
             fullWidth

@@ -2,13 +2,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, router } from 'expo-router';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, KeyboardAvoidingView, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
 
 import { Button, Input } from '@/components/ui';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { ForgotPasswordFormData, forgotPasswordSchema } from '@/lib/validation/auth';
 
 const Container = styled(SafeAreaView)`
@@ -60,28 +61,16 @@ const BackToSignInLinkText = styled(Text)`
   font-weight: ${theme.typography.fontWeights.medium};
 `;
 
-const ErrorText = styled(Text)`
-  font-size: ${theme.typography.sm}px;
-  color: ${theme.colors.error[500]};
-  text-align: center;
-  margin-bottom: ${theme.spacing[3]}px;
-`;
-
-const SuccessText = styled(Text)`
-  font-size: ${theme.typography.sm}px;
-  color: ${theme.colors.success[500]};
-  text-align: center;
-  margin-bottom: ${theme.spacing[3]}px;
-`;
-
 export default function ForgotPasswordScreen() {
   const { sendPasswordResetEmail, loading, error, clearError } = useAuth();
+  const { showToast } = useToast();
   const [isEmailSent, setIsEmailSent] = React.useState(false);
 
   const {
     control,
     handleSubmit,
     formState: { errors },
+    setError: setFormError,
   } = useForm<ForgotPasswordFormData>({
     resolver: zodResolver(forgotPasswordSchema),
     defaultValues: {
@@ -95,7 +84,15 @@ export default function ForgotPasswordScreen() {
       await sendPasswordResetEmail(data.email);
       setIsEmailSent(true);
     } catch (err: any) {
-      Alert.alert('Error', err.message);
+      // Handle specific form field errors
+      if (err.code === 'auth/user-not-found') {
+        setFormError('email', { message: 'No account found with this email address' });
+      } else if (err.code === 'auth/invalid-email') {
+        setFormError('email', { message: 'Please enter a valid email address' });
+      } else if (err.code === 'auth/too-many-requests') {
+        showToast('warning', 'Too Many Attempts', 'Please wait a few minutes before trying again.');
+      }
+      // Other errors are already handled by the toast system in AuthContext
     }
   };
 
@@ -114,13 +111,6 @@ export default function ForgotPasswordScreen() {
         </Header>
 
         <FormSection>
-          {error && <ErrorText>{error.message}</ErrorText>}
-          {isEmailSent && (
-            <SuccessText>
-              Password reset email sent! Please check your inbox and follow the instructions.
-            </SuccessText>
-          )}
-
           <Controller
             control={control}
             name="email"

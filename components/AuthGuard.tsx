@@ -18,25 +18,25 @@ interface AuthGuardProps {
 }
 
 export function AuthGuard({ children }: AuthGuardProps) {
-  const { user, loading } = useAuth();
+  const { user, loading, isAuthenticating } = useAuth();
   const segments = useSegments();
 
   useEffect(() => {
-    if (loading) return;
-
-    const inAuthGroup = segments[0] === 'auth';
-    const inOnboardingGroup = segments[0] === 'onboarding';
-
-    if (!user && !inAuthGroup && !inOnboardingGroup) {
-      // User is not authenticated and not on auth or onboarding screens
-      router.replace('/');
-    } else if (user && inAuthGroup) {
-      // User is authenticated but on auth screens
-      router.replace('/(tabs)');
+    // Completely ignore all navigation during authentication
+    if (loading || isAuthenticating) {
+      return;
     }
-  }, [user, loading, segments]);
 
-  if (loading) {
+    const inTabsGroup = segments[0] === '(tabs)';
+
+    // Only redirect unauthenticated users away from protected screens
+    // This is the ONLY navigation decision the AuthGuard should make
+    if (!user && inTabsGroup) {
+      router.replace('/');
+    }
+  }, [user, loading, isAuthenticating, segments]);
+
+  if (loading || isAuthenticating) {
     return (
       <LoadingContainer>
         <ActivityIndicator size="large" color={theme.colors.primary[500]} />

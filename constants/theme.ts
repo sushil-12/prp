@@ -16,17 +16,17 @@ export const theme = {
     
     // Brand colors
     primary: {
-        50:  '#ECFDF5',   // very light green background
-        100: '#D1FAE5',   // subtle tint for hover/focus
-        200: '#A7F3D0',
-        300: '#6EE7B7',
-        400: '#34D399',   // accent green
-        500: '#10B981',   // MAIN brand green (matches "prep" in logo)
-        600: '#059669',   // for primary buttons
-        700: '#047857',
-        800: '#065F46',
-        900: '#064E3B',   // for text contrast or emphasis
-      },
+      50:  '#EFFAF1',   // very light green
+      100: '#DAF0DB',   // subtle background tint
+      200: '#B8E0BA',
+      300: '#92D199',
+      400: '#73C480',   // accent
+      500: '#64BB6D',   // main brand color
+      600: '#59A960',   // for buttons/hover
+      700: '#498C4F',
+      800: '#3A6E3F',
+      900: '#2E5832',   // for high contrast
+    },
     
     // Semantic colors
     success: {
@@ -35,6 +35,7 @@ export const theme = {
       500: '#22C55E',
       600: '#16A34A',
       700: '#15803D',
+      800: '#166534',
     },
     
     warning: {
@@ -43,6 +44,7 @@ export const theme = {
       500: '#F59E0B',
       600: '#D97706',
       700: '#B45309',
+      800: '#92400E',
     },
     
     error: {
@@ -51,6 +53,7 @@ export const theme = {
       500: '#EF4444',
       600: '#DC2626',
       700: '#B91C1C',
+      800: '#991B1B',
     },
     
     // Background colors

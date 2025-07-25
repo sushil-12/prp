@@ -10,7 +10,7 @@ import { theme } from '@/constants/theme'; // Assuming this is your theme file
 // A full-screen container with a background image.
 // The source would be a professional, abstract, or motivational image related to careers.
 const StyledImageBackground = styled(ImageBackground).attrs({
-  source: require('@/assets/images/landing-bg.avif'), // <-- IMPORTANT: Replace with a high-quality background image
+  source: require('@/assets/images/landing-background.png'), // <-- IMPORTANT: Replace with a high-quality background image
 })`
   flex: 1;
 `;
@@ -110,9 +110,9 @@ export default function LandingScreen() {
       <ContentContainer>
         <Header>
             {/* Using an icon here as a placeholder for a simplified logo */}
-            <LogoImage source={require('@/assets/images/black-app-icon.png')} />
+            <LogoImage source={require('@/assets/images/logo.png')} />
         </Header>
-        <HeroImage source={require('@/assets/images/hero.png')} resizeMode="cover" />
+          <HeroImage source={require('@/assets/images/hero.png')} resizeMode="contain" />
 
         <HeroSection>
           <Title>Unlock Your Next Career Move</Title>
